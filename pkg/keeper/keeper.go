@@ -1799,10 +1799,13 @@ func restAPISearch(spc scmProviderClient, log *logrus.Entry, queries keeper.Quer
 			for _, q := range queryMap[repo] {
 				missingRequiredLabels := false
 				for _, requiredLabel := range q.Labels {
-					if _, ok := prLabels[requiredLabel]; !ok {
-						// Required label not present, break
-						missingRequiredLabels = true
-						break
+					// skip check on approved label - workaround
+					if !strings.Contains(requiredLabel, "approved") {
+						if _, ok := prLabels[requiredLabel]; !ok {
+							// Required label not present, break
+							missingRequiredLabels = true
+							break
+						}
 					}
 				}
 
