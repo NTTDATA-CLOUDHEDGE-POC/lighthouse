@@ -28,7 +28,9 @@ func (c *Client) GetPullRequest(owner, repo string, number int) (*scm.PullReques
 }
 
 func (c *Client) populateFields(ctx context.Context, pr *scm.PullRequest, owner, repo string) (*scm.PullRequest, error) {
-	if pr != nil && !c.SupportsPRLabels() {
+	// if pr != nil && !c.SupportsPRLabels() {
+	// workaround removing SupportsPRLabels
+	if pr != nil {
 		labels, err := c.GetIssueLabels(owner, repo, pr.Number, true)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting labels from comment for PR")
@@ -73,9 +75,10 @@ func (c *Client) ListAllPullRequestsForFullNameRepo(fullName string, opts scm.Pu
 		allPRs = append(allPRs, pagePRs...)
 		opts.Page++
 	}
-	if c.SupportsPRLabels() {
-		return allPRs, nil
-	}
+	// workaround removing SupportsPRLabels
+	// if c.SupportsPRLabels() {
+	// 	return allPRs, nil
+	// }
 	nameParts := strings.Split(fullName, "/")
 	var withLabels []*scm.PullRequest
 	for _, pr := range allPRs {
