@@ -42,14 +42,16 @@ func handlePR(c Client, trigger *plugins.Trigger, pr scm.PullRequestHook) error 
 		// When a PR is opened, if the author is in the org then build it.
 		// Otherwise, ask for "/ok-to-test". There's no need to look for previous
 		// "/ok-to-test" comments since the PR was just opened!
-		member, err := TrustedUser(c.SCMProviderClient, trigger, author, org, repo)
-		if err != nil {
-			return fmt.Errorf("could not check membership: %s", err)
-		}
-		if member {
-			c.Logger.Infof("Author %q is a member, Starting all jobs for new PR.", author)
-			return buildAll(c, &pr.PullRequest, pr.GUID, trigger.ElideSkippedContexts)
-		}
+
+		// workaround - remove membership test as this is working - we are relying on users having correct access
+		//member, err := TrustedUser(c.SCMProviderClient, trigger, author, org, repo)
+		// if err != nil {
+		// 	return fmt.Errorf("could not check membership: %s", err)
+		// }
+		// if member {
+		c.Logger.Infof("Author %q is a member, Starting all jobs for new PR.", author)
+		return buildAll(c, &pr.PullRequest, pr.GUID, trigger.ElideSkippedContexts)
+		// }
 		c.Logger.Infof("Author is not a member, Welcome message to PR author %q.", author)
 		if err := welcomeMsg(c.SCMProviderClient, trigger, pr.PullRequest); err != nil {
 			return fmt.Errorf("could not welcome non-org member %q: %v", author, err)
