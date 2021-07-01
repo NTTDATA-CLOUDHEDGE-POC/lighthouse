@@ -318,6 +318,12 @@ func (o *WebhooksController) handleWebhookOrPollRequest(w http.ResponseWriter, r
 	}
 }
 
+// return true if event needs to be run in background, false otherwise
+func confirmBGEventExecution(o *WebhooksController) bool {
+	driverName := o.server.ClientAgent.SCMProviderClient.Driver.String()
+	return (driverName == "bitbucket")
+}
+
 // ProcessWebHook process a webhook
 func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook) (*logrus.Entry, string, error) {
 	repository := webhook.Repository()
@@ -360,6 +366,10 @@ func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook
 			}
 		}
 	}
+
+	// flag to decide whether to run event in background or not
+	eventRunFG := !confirmBGEventExecution(o)
+
 	pushHook, ok := webhook.(*scm.PushHook)
 	if ok {
 		fields["Ref"] = pushHook.Ref
@@ -372,7 +382,12 @@ func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook
 
 		l.Info("invoking Push handler")
 
-		o.server.handlePushEvent(l, pushHook)
+		if eventRunFG {
+			o.server.handlePushEvent(l, pushHook)
+		} else {
+			go o.server.handlePushEvent(l, pushHook)
+		}
+
 		return l, "processed push hook", nil
 	}
 	prHook, ok := webhook.(*scm.PullRequestHook)
@@ -388,7 +403,12 @@ func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook
 
 		l.Info("invoking PR handler")
 
-		o.server.handlePullRequestEvent(l, prHook)
+		if eventRunFG {
+			o.server.handlePullRequestEvent(l, prHook)
+		} else {
+			go o.server.handlePullRequestEvent(l, prHook)
+		}
+
 		return l, "processed PR hook", nil
 	}
 	branchHook, ok := webhook.(*scm.BranchHook)
@@ -402,7 +422,12 @@ func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook
 
 		l.Info("invoking branch handler")
 
-		o.server.handleBranchEvent(l, branchHook)
+		if eventRunFG {
+			o.server.handleBranchEvent(l, branchHook)
+		} else {
+			go o.server.handleBranchEvent(l, branchHook)
+		}
+
 		return l, "processed branch hook", nil
 	}
 	issueCommentHook, ok := webhook.(*scm.IssueCommentHook)
@@ -422,7 +447,12 @@ func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook
 
 		l.Info("invoking Issue Comment handler")
 
-		o.server.handleIssueCommentEvent(l, *issueCommentHook)
+		if eventRunFG {
+			o.server.handleIssueCommentEvent(l, *issueCommentHook)
+		} else {
+			go o.server.handleIssueCommentEvent(l, *issueCommentHook)
+		}
+
 		return l, "processed issue comment hook", nil
 	}
 	prCommentHook, ok := webhook.(*scm.PullRequestCommentHook)
@@ -444,9 +474,12 @@ func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook
 
 		l.Info("invoking PR Comment handler")
 
-		l.Info("invoking Issue Comment handler")
+		if eventRunFG {
+			o.server.handlePullRequestCommentEvent(l, *prCommentHook)
+		} else {
+			go o.server.handlePullRequestCommentEvent(l, *prCommentHook)
+		}
 
-		o.server.handlePullRequestCommentEvent(l, *prCommentHook)
 		return l, "processed PR comment hook", nil
 	}
 	prReviewHook, ok := webhook.(*scm.ReviewHook)
@@ -466,7 +499,12 @@ func (o *WebhooksController) ProcessWebHook(l *logrus.Entry, webhook scm.Webhook
 
 		l.Info("invoking PR Review handler")
 
-		o.server.handleReviewEvent(l, *prReviewHook)
+		if eventRunFG {
+			o.server.handleReviewEvent(l, *prReviewHook)
+		} else {
+			go o.server.handleReviewEvent(l, *prReviewHook)
+		}
+
 		return l, "processed PR review hook", nil
 	}
 	l.Debugf("unknown kind %s webhook %#v", webhook.Kind(), webhook)
