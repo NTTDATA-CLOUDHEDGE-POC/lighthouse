@@ -12,7 +12,17 @@ import (
 
 // ToClient converts the scm client to an API that the prow plugins expect
 func ToClient(client *scm.Client, botName string) *Client {
-	return &Client{client: client, botName: botName}
+	botUser := botName
+	gitKind := os.Getenv("GIT_KIND")
+	if gitKind == "bitbucketcloud" {
+		// for BBC override botname with current user's login
+		// Assuming that $GIT_USER is used as bot user
+		currentUser, _, err := client.Users.Find(context.Background())
+		if err == nil {
+			botUser = currentUser.Login
+		}
+	}
+	return &Client{client: client, botName: botUser}
 }
 
 // SCMClient is an interface providing all functions on the Client struct.
@@ -109,9 +119,21 @@ func (c *Client) ToScmClient() *scm.Client {
 func (c *Client) BotName() (string, error) {
 	botName := c.botName
 	if botName == "" {
-		botName = os.Getenv("GIT_USER")
-		if botName == "" {
-			botName = "jenkins-x-bot"
+		//c.botName may never be empty, reloading just in case it is
+		gitKind := os.Getenv("GIT_KIND")
+		if gitKind == "bitbucketcloud" {
+			// for BBC git provider, get login of the bot user
+			currentUser, _, err := c.client.Users.Find(context.Background())
+			if err != nil {
+				return "", err
+			}
+			botName = currentUser.Login
+		} else {
+			// git provider is not BBC
+			botName = os.Getenv("GIT_USER")
+			if botName == "" {
+				botName = "jenkins-x-bot"
+			}
 		}
 		c.botName = botName
 	}
