@@ -164,6 +164,10 @@ func BlobURLForProvider(providerType string, baseURL *url.URL, owner, repo, bran
 			u = fmt.Sprintf("%s?at=%s", u, url.QueryEscape("refs/heads/"+branch))
 		}
 		return u
+	case "bitbucket":
+		// assuming bitbucket cloud
+		blobUrl := fmt.Sprintf("%s/%s/%s/src/%s/%v", strings.TrimSuffix(baseURL.String(), "/"), owner, repo, branch, fullPath)
+		return blobUrl
 	case "gitlab":
 		return fmt.Sprintf("%s/%s/%s/-/blob/%s/%v", strings.TrimSuffix(baseURL.String(), "/"), owner, repo, branch, fullPath)
 	default:
